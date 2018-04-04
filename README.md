@@ -82,7 +82,7 @@ x.equal(x, 'id')
 
 This introduces the use of the reserved keyword `private` that acts symmetrical to the use of `super` or `import` where it is both a syntax i.e `private[property]` and function `private(this)[property]`.
 
-This means that `private(this)[property]` is equivalent to `private[property]`. 
+This means that `private(this)[property]` is equivalent to `private[property]`.
 
 The following examples demonstrates how this might look and work with other active/future proposals.
 
@@ -125,9 +125,21 @@ class A {
 This has the additional benefit of allowing future proposals to introduce something akin to private symbols that translates the above class syntax to an equivelent prototype-based constructor design.
 
 ```js
-var PrivateSymbolForValue = Symbol.private('value')
-var PrivateSymbolForMethod = Symbol.private('method')
-var PrivateSymbolForLength = Symbol.private('length')
+// var PrivateSymbolForValue = Symbol.private('value')
+// var PrivateSymbolForMethod = Symbol.private('method')
+// var PrivateSymbolForLength = Symbol.private('length')
+
+// The above might allow third part code to ease-drop on private keys i.e
+// SymbolPrivate = Symbol.private
+// Symbol.private = function custom (key) {
+//    var cache = SymbolPrivate(key)
+//    // store a copy ...
+//    return cache
+// }
+// The use of both a Symbol like Symbol.iterator and the reserved private keyword prevents the previous presented vulnerability
+var PrivateSymbolForValue = private[Symbol.private]('value')
+var PrivateSymbolForMethod = private[Symbol.private]('method')
+var PrivateSymbolForLength = private[Symbol.private]('length')
 
 function A () {
   this[PrivateSymbolForValue] = 'string' // [1]
