@@ -2,6 +2,8 @@
 
 Stage 0
 
+Champion Needed
+
 The following proposes a vision for private fields that conforms to the harmony of a JavaScript prototype based paradigm.
 
 ## Why
@@ -63,7 +65,7 @@ x.equal(x, 'id')
 
 ## What
 
-This proposal aims to achieve these requirements without introducing an asymmetrical new syntax for private fields, with the additional goal of not restricting the future of private properties to class syntax in consideration of JavaScripts primary roots within a prototype-based paradigm.
+This proposal aims to achieve these requirements without introducing an asymmetrical new syntax for private fields.
 
 The afor-mentioned affected pattern would be implemented in following:
 
@@ -122,43 +124,140 @@ class A {
 }
 ```
 
-This has the additional benefit of allowing future proposals to introduce something akin to private symbols that translates the above class syntax to an equivelent prototype-based constructor design.
+## FAQ
+
+>What does private(this)[property] do?
+
+"private(this)[property]" and alternatively "private[property]" or "private.property" all invoke access of a private "property" on the instance of the class, symmetrical to the syntax/function nature of both the "super" and "import" keywords.
+
+>What's private about private fields?
+
+Outside of a private fields provider class, private fields/methods would not be accessible.
+
+>How do you prevent them from being forged or stuck onto unrelated objects?
+
+Given the following:
 
 ```js
-// var PrivateSymbolForValue = Symbol.private('value')
-// var PrivateSymbolForMethod = Symbol.private('method')
-// var PrivateSymbolForLength = Symbol.private('length')
-
-// The above might allow third part code to ease-drop on private keys i.e
-// SymbolPrivate = Symbol.private
-// Symbol.private = function custom (key) {
-//    var cache = SymbolPrivate(key)
-//    // store a copy ...
-//    return cache
-// }
-// The use of both a Symbol like Symbol.iterator and the reserved private keyword prevents the previous presented vulnerability
-var PrivateSymbolForValue = private[Symbol.private]('value')
-var PrivateSymbolForMethod = private[Symbol.private]('method')
-var PrivateSymbolForLength = private[Symbol.private]('length')
-
-function A () {
-  this[PrivateSymbolForValue] = 'string' // [1]
-  this.value = 'string' // [5]
-  this['method']() // [7]
-  this[PrivateSymbolForMethod](this[PrivateSymbolForValue]) // [8]
-  this[PrivateSymbolForLength] = 1 // [9]
-  this.constructor['method'](this.constructor['value']) // [10]
+class A {
+  private id = 0;
+  private method(value) {
+    return value;
+  }
+  write(value) {
+    private(this)["id"] = private["method"](value);
+  }
 }
+```
 
-A.prototype[PrivateSymbolForMethod] = function () {} // [2]
-A.prototype.method = function () {} // [6]
+and then invoking the above write method with a "this" value that is not an instance of A, for example `(new A()).write.call({}, 'pawned');`, would fail – the private syntax call site is scoped to the surrounding provider class. For example imagine the current possible transpilation of this with WeakMaps:
 
-A.value = 'string' // [3]
-A.method = function () {} // [4]
+```js
+(function (){
+  var registry = WeakMap()
+
+  function A () {
+    registry.set(this, {id: 0})
+  }
+  A.prototype.write: function () {
+    registry.get(this)["id"] = registry.get(this.constructor)["method"].call(this, value)
+  }
+
+  // shared(i.e private methods)
+  registry.set(A, {
+    method: function (value) {
+      return value
+    }
+  })
+
+  return A
+})()
+```
+
+Trying to do the the afore-mentioned forge here would currently fail along the lines of cannot read property "id" of  "undefined".
+
+> An instance has a fixed set of private fields which get created at object creation time.
+
+The implications of this alternative do not limit the creation of private fields to creation time, for example writing to a private field in the constructor or at any arbitrary time within the lifecycle of the instance.
+
+```js
+class HashTable {
+  constructor() {
+    private[Symbol.for('length')] = 0
+  }
+  set(key, value) {
+    private[key] = value
+  }
+  get(key) {
+    return private[key]
+  }
+}
+```
+
+>That would contradict your previous answer to the hijacking question. In the transpilation you created the field using "registry.set(this, {id: 0})", in the constructor.  If you then claim that any write to the field can also create it, then you get the hijacking behavior which you wrote doesn't happen.
+
+The difference between the following
+
+```js
+class A {
+  private id = 0
+}
+```
+
+and the following
+
+```js
+class A {
+  constructor() {
+    private.id = 0
+  }
+}
+```
+
+is similar to the difference between
+
+```js
+(function (){
+  var registry = WeakMap()
+
+  function A () {
+    registry.set(this, {id: 0})
+  }
+
+  return A
+})()
+```
+
+and
+
+```js
+(function () {
+  var registry = WeakMap()
+
+  function A () {
+    registry.set(this, {})
+    registry.get(this)["id"] = 0
+  }
+
+  return A
+})
+```
+
+This in no way permits the hijacking behavior previously mentioned – `(new A()).write.call({}, 'pawned')`
+
+>Do you limit classes to creating only the private fields declared in the class, or can they create arbitrarily named ones?
+
+Just as you could write to arbitrary named fields with the mentioned WeakMap approach, you can also do the same for this alternative, for example –
+
+```js
+private[key] = value
+// or
+private(this)[key] = value
 ```
 
 ## Related
 
 - [Yet another approach to a more JS-like syntax](https://github.com/tc39/proposal-private-methods/issues/28)
-- [private and protected are like static and super](https://github.com/tc39/proposal-class-fields/issues/90)
-- [proposal-about-private-symbol](https://esdiscuss.org/topic/proposal-about-private-symbol)
+- [Private and Protected are like Static and Super](https://github.com/tc39/proposal-class-fields/issues/90)
+- [Proposal About Private Symbols](https://esdiscuss.org/topic/proposal-about-private-symbol)
+- [Related Esdiscuss Thread](https://esdiscuss.org/topic/ecmascript-proposal-private-methods-and-fields-proposals)
