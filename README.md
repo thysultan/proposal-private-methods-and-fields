@@ -16,7 +16,7 @@ class A {
     this.id = Symbol('unique')
   }
   equal(instance, property) {
-    return this[property] == other[property]
+    return this[property] == instance[property]
   }
 }
 
