@@ -318,4 +318,6 @@ Syntax synergy is a strong contributing factor to the introduction of this alter
 
 </details>
 
+---
+
 This proposal is a best affort to afford these issues an alternative syntax without sacrificing the current syntax synergy of the JavaScript language.
